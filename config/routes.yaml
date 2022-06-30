@@ -1,3 +1,9 @@
 controllers:
     resource: ../src/Controller/
     type: attribute
+
+pageNotFound:
+    path: /{req}
+    controller: App\Controller\PageNotFoundController::index
+    requirements:
+        req: .*

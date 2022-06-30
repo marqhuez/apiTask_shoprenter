@@ -392,4 +392,24 @@ abstract class AbstractController implements ServiceSubscriberInterface
 
         $request->attributes->set('_links', $linkProvider->withLink($link));
     }
+
+    private function respond($headerAccept, $returnData, $status = 200, $header = []): Response
+    {
+        $encoders = [new XmlEncoder(), new JsonEncoder()];
+        $normalizers = [new ObjectNormalizer()];
+        $serializer = new Serializer($normalizers, $encoders);
+        $responseContent = "";
+
+        if ($headerAccept == "text/xml" || $headerAccept == "application/xml") {
+            $responseContent = $serializer->serialize($returnData, "xml");
+            $header = array_merge($header, ["Content-Type" => "text/xml"]);
+        } else if ($headerAccept == "yaml") {
+            //yaml response
+        } else {
+            $responseContent = $serializer->serialize($returnData, "json");
+            $header = array_merge($header, ["Content-Type" => "application/json"]);
+        }
+
+        return new Response($responseContent, $status, $header);
+    }
 }

@@ -4,17 +4,12 @@ namespace App\Controller;
 
 use App\Factory\SecretFactory;
 use App\Repository\SecretRepository;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Serializer\Encoder\JsonEncoder;
-use Symfony\Component\Serializer\Encoder\XmlEncoder;
-use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
-use Symfony\Component\Serializer\Serializer;
 
 #[Route(path: "/secrets", name: "secrets_")]
-class SecretController extends AbstractController
+class SecretController extends AbstractRespondController
 {
     public function __construct(private readonly SecretRepository $secretRepository)
     {
@@ -63,25 +58,5 @@ class SecretController extends AbstractController
 		$this->secretRepository->add($entity, true);
 
 		return $this->respond($headerAccept, $entity->asAssocArray());
-	}
-
-	private function respond($headerAccept, $returnData, $status = 200, $header = []): Response
-	{
-		$encoders = [new XmlEncoder(), new JsonEncoder()];
-		$normalizers = [new ObjectNormalizer()];
-		$serializer = new Serializer($normalizers, $encoders);
-		$responseContent = "";
-
-		if ($headerAccept == "text/xml" || $headerAccept == "application/xml") {
-			$responseContent = $serializer->serialize($returnData, "xml");
-			$header = array_merge($header, ["Content-Type" => "text/xml"]);
-		} else if ($headerAccept == "yaml") {
-			//yaml response
-		} else {
-			$responseContent = $serializer->serialize($returnData, "json");
-			$header = array_merge($header, ["Content-Type" => "application/json"]);
-		}
-
-		return new Response($responseContent, $status, $header);
 	}
 }

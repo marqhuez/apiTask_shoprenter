@@ -39,28 +39,37 @@ class SecretRepository extends ServiceEntityRepository
         }
     }
 
-//    /**
-//     * @return Secret[] Returns an array of Secret objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('s')
-//            ->andWhere('s.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('s.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
+    public function findOneActiveSecretByHash(string $hash) {
+        $qb = $this->createQueryBuilder("s")
+            ->where("s.expiresAt > CURRENT_TIMESTAMP()")
+            ->andWhere("s.remainingViews > 0")
+            ->andWhere("s.hash = '$hash'");
 
-//    public function findOneBySomeField($value): ?Secret
-//    {
-//        return $this->createQueryBuilder('s')
-//            ->andWhere('s.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+        $result = $qb->getQuery()->execute();
+
+        $this->updateReminingViews($result);
+
+        return $result;
+    }
+
+	public function findAllActiveSecrets() {
+		$qb = $this->createQueryBuilder("s")
+			->where("s.expiresAt > CURRENT_TIMESTAMP()")
+            ->andWhere("s.remainingViews > 0");
+
+        $result = $qb->getQuery()->execute();
+
+        $this->updateReminingViews($result);
+
+		return $result;
+	}
+
+    private function updateReminingViews(array $secretArray) {
+        foreach ($secretArray as $secret) {
+            $secret->setRemainingViews($secret->getRemainingViews() - 1);
+            $this->getEntityManager()->persist($secret);
+        }
+
+        $this->getEntityManager()->flush();
+    }
 }

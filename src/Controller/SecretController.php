@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Factory\SecretFactory;
 use App\Repository\SecretRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,35 +16,72 @@ use Symfony\Component\Serializer\Serializer;
 #[Route(path: "/secrets", name: "secrets_")]
 class SecretController extends AbstractController
 {
-    public function __construct(private readonly SecretRepository $secrets)
+    public function __construct(private readonly SecretRepository $secretRepository)
     {
     }
 
     #[Route(path: "", name: "all", methods: ["GET"])]
     function all(Request $request): Response
     {
-        $data = $this->secrets->findAll();
+		$headerAccept = $request->headers->get("accept");
 
-        $encoders = [new XmlEncoder(), new JsonEncoder()];
-        $normalizers = [new ObjectNormalizer()];
-        $serializer = new Serializer($normalizers, $encoders);
+        $data = $this->secretRepository->findAllActiveSecrets();
 
-        $xmlContent = $serializer->serialize($data, "xml");
-
-//        var_dump($xmlContent);
-
-//        return new XmlResponse($xmlContent);
-        return $this->json($data, 200, ["Content-Type" => "application/json"]);
+		return $this->respond($headerAccept, $data);
     }
 
-    #[Route(path: "/{id}", name: "byId", methods: ["GET"])]
-    function getById(int $id) : Response
+    #[Route(path: "/{hash}", name: "byHash", methods: ["GET"])]
+    function getByHash(string $hash, Request $request) : Response
     {
-        $data = $this->secrets->findOneBy(["id" => $id]);
+		$headerAccept = $request->headers->get("accept");
+
+        $data = $this->secretRepository->findOneActiveSecretByHash($hash);
+
         if ($data) {
-            return $this->json($data);
+			return $this->respond($headerAccept, $data);
         } else {
-            return $this->json(["error" => "Secret with id " . $id . " was not found!"]);
+            return $this->respond($headerAccept, ["error" => "Secret with hash " . $hash . " was not found!"], 404);
         }
     }
+
+	#[Route(path: "", name: "createSecret", methods: ["POST"])]
+	function createSecret(Request $request): Response
+	{
+		$headerAccept = $request->headers->get("accept");
+
+		$secret = $request->query->get("secret");
+		$expiresAfterViews = $request->query->get("expireAfterViews");
+		$expiresAfter = $request->query->get("expireAfter");
+
+		if (!isset($secret) || !isset($expiresAfterViews) || !isset($expiresAfter)) {
+			if (empty($secret) || empty($expiresAfterViews) || empty($expiresAfter)) {
+				return $this->respond($headerAccept, ["error" => "Invalid input!"], 405);
+			}
+		}
+
+		$entity = SecretFactory::createSecret($secret, $expiresAfterViews, $expiresAfter);
+		$this->secretRepository->add($entity, true);
+
+		return $this->respond($headerAccept, $entity->asAssocArray());
+	}
+
+	private function respond($headerAccept, $returnData, $status = 200, $header = []): Response
+	{
+		$encoders = [new XmlEncoder(), new JsonEncoder()];
+		$normalizers = [new ObjectNormalizer()];
+		$serializer = new Serializer($normalizers, $encoders);
+		$responseContent = "";
+
+		if ($headerAccept == "text/xml" || $headerAccept == "application/xml") {
+			$responseContent = $serializer->serialize($returnData, "xml");
+			$header = array_merge($header, ["Content-Type" => "text/xml"]);
+		} else if ($headerAccept == "yaml") {
+			//yaml response
+		} else {
+			$responseContent = $serializer->serialize($returnData, "json");
+			$header = array_merge($header, ["Content-Type" => "application/json"]);
+		}
+
+		return new Response($responseContent, $status, $header);
+	}
 }

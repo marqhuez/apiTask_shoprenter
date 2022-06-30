@@ -8,10 +8,9 @@ class SecretFactory
 {
     public static function createSecret($secret, $expireAfterViews, $expireAfter): Secret
     {
-        $secretEntity = new Secret();
-        $secretEntity->setSecret($secret);
-        $secretEntity->setExpireAfterViews($expireAfterViews);
-        $secretEntity->setExpireAfter($expireAfter);
+        $secretEntity = new Secret($expireAfter);
+		$secretEntity->setSecretText($secret);
+        $secretEntity->setRemainingViews($expireAfterViews);
 
         return $secretEntity;
     }

@@ -4,87 +4,81 @@ namespace App\Entity;
 
 use App\Repository\SecretRepository;
 use DateTime;
+use DateTimeZone;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: SecretRepository::class)]
 class Secret
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    private ?int $id;
+    #[ORM\Column(type: 'string', unique: true)]
+    private ?string $hash;
 
     #[ORM\Column(type: 'string', length: 50)]
-    private ?string $secret;
-
-    #[ORM\Column(type: 'integer')]
-    private ?int $expireAfterViews;
-
-    #[ORM\Column(type: 'integer')]
-    private ?int $expireAfter;
+    private ?string $secretText;
 
     #[ORM\Column(type: 'datetime')]
-    private DateTime|string $dateCreated;
+    private DateTime|string $createdAt;
 
-    public function __construct()
+    #[ORM\Column(type: 'datetime')]
+    private DateTime|string $expiresAt;
+
+	#[ORM\Column(type: 'integer')]
+	private ?int $remainingViews;
+
+	public function __construct(int $expiresAfter)
     {
-        $this->dateCreated = new DateTime();
+		$this->hash = md5(rand(0, 1000) . time());
+		$budapestTimezone = new DateTimeZone("GMT+2");
+        $this->createdAt = new DateTime("now", $budapestTimezone);
+        $this->expiresAt = new DateTime("+" . $expiresAfter . " minutes", $budapestTimezone);
     }
 
-    public function getId(): ?int
+    public function getHash(): ?string
     {
-        return $this->id;
+        return $this->hash;
     }
 
-    public function getSecret(): ?string
+	public function getSecretText(): ?string
+	{
+		return $this->secretText;
+	}
+
+	public function setSecretText(?string $secretText): void
+	{
+		$this->secretText = $secretText;
+	}
+
+	public function getRemainingViews(): ?int
+	{
+		return $this->remainingViews;
+	}
+
+	public function setRemainingViews(?int $remainingViews): void
+	{
+		$this->remainingViews = $remainingViews;
+	}
+
+    public function getCreatedAt(): string
     {
-        return $this->secret;
+        return $this->createdAt->format('Y-m-d H:i:s');
     }
 
-    public function setSecret(string $secret): self
+    public function setCreatedAt(\DateTimeInterface $createdAt): self
     {
-        $this->secret = $secret;
+        $this->createdAt = DateTime::createFromInterface($createdAt);
 
         return $this;
     }
 
-    public function getExpireAfterViews(): ?int
+    public function getExpiresAt(): string
     {
-        return $this->expireAfterViews;
+        return $this->expiresAt->format('Y-m-d H:i:s');
     }
 
-    public function setExpireAfterViews(int $expireAfterViews): self
+    public function setExpiresAt(\DateTimeInterface $expiresAt): self
     {
-        $this->expireAfterViews = $expireAfterViews;
-
-        return $this;
-    }
-
-    public function getExpireAfter(): ?int
-    {
-        return $this->expireAfter;
-    }
-
-    public function setExpireAfter(int $expireAfter): self
-    {
-        $this->expireAfter = $expireAfter;
-
-        return $this;
-    }
-
-//    public function getDateAsDateTime(): ?\DateTime
-//    {
-//        return $this->date;
-//    }
-
-    public function getDateCreated(): string
-    {
-        return $this->dateCreated->format('Y-m-d H:i:s');
-    }
-
-    public function setDateCreated(\DateTimeInterface $dateCreated): self
-    {
-        $this->dateCreated = DateTime::createFromInterface($dateCreated);
+        $this->expiresAt = DateTime::createFromInterface($expiresAt);
 
         return $this;
     }
@@ -92,11 +86,22 @@ class Secret
     public function asArray(): array
     {
         return [
-            $this->id,
-            $this->secret,
-            $this->expireAfterViews,
-            $this->expireAfter,
-            $this->dateCreated
+            $this->hash,
+            $this->secretText,
+            $this->remainingViews,
+            $this->getCreatedAt(),
+            $this->getExpiresAt()
+        ];
+    }
+
+    public function asAssocArray(): array
+    {
+        return [
+            "hash" => $this->hash,
+            "secretText" => $this->secretText,
+            "createdAt" => $this->getCreatedAt(),
+            "expiresAt" => $this->getExpiresAt(),
+            "remainingViews" => $this->remainingViews
         ];
     }
 }

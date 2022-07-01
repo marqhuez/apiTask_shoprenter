@@ -49,9 +49,23 @@ class SecretController extends AbstractRespondController
 		$expiresAfter = $request->query->get("expireAfter");
 
 		if (!isset($secret) || !isset($expiresAfterViews) || !isset($expiresAfter)) {
-			if (empty($secret) || empty($expiresAfterViews) || empty($expiresAfter)) {
-				return $this->respond($headerAccept, ["error" => "Invalid input!"], 405);
-			}
+			return $this->respond($headerAccept, ["error" => "Invalid input!"], 405);
+		}
+
+		if (empty($secret) || empty($expiresAfterViews) || empty($expiresAfter)) {
+			return $this->respond($headerAccept, ["error" => "Invalid input!"], 405);
+		}
+
+		if (!is_string($secret)) {
+			return $this->respond($headerAccept, ["error" => "secret must be string!"], 405);
+		}
+
+		if (!is_numeric($expiresAfter)) {
+			return $this->respond($headerAccept, ["error" => "expireAfter must be a number!"], 405);
+		}
+
+		if (!is_numeric($expiresAfterViews)) {
+			return $this->respond($headerAccept, ["error" => "expireAfterViews must be a number!"], 405);
 		}
 
 		$entity = SecretFactory::createSecret($secret, $expiresAfterViews, $expiresAfter);
